@@ -9,18 +9,30 @@
 	 */
 	function elementReady(element, callback) {
 
-		var readyState = function(){
-				if(element.readyState == "complete") {
-					callback.call(element)
+		var fired = false,
+			ready = function() {
+				
+				/** 
+				 * makes sure that the callback is only executed once
+				 */
+				if(!fired){
+					fired =true;
+					callback();
+					
 				}
-		}
+			},
+			readyState = function(){
+				if(el.readyState == "complete") {
+					ready();
+				}
+			};
 
 		if(element.addEventListener){
-			element.addEventListener('DOMContentLoaded',callback);
-			element.addEventListener('load',callback);
+			element.addEventListener('DOMContentLoaded',ready);
+			element.addEventListener('load',ready);
 		}else{
 			element.attachEvent('onreadystatechange',readyState);
-			element.attachEvent('onload',callback);	
+			element.attachEvent('onload',ready);	
 		}
 
 		return element;
@@ -31,15 +43,23 @@
 	 * create element base from the source
 	 * @return DOMElment
 	 */
-	function createElement(source){
+	function createElement(source, name){
 		var el;
 		if( (/.js$/).test(source) ){
 			el = document.createElement('script');
 			el.src = source;	
+			el.setAttribute('async', true);
 		}else{
 			el = document.createElement('link');
 			el.rel = "stylesheet";
 			el.href = source;	
+		}
+
+		/**
+		 * set the name of the element
+		 */
+		if(name) {
+			el.setAttribute('blazedefer-library', name);
 		}
 		
 		return el;
@@ -103,29 +123,72 @@
 		 * @param array dependencies
 		 * @param function callback
 		 */
-		run: function(dependecies, callback){
+		run: function(dependencies, callback){
 
-			var _loaded = [];
+			/**
+			 * initiate variable functions to be called later
+			 */ 
+			var self = this,
+				callback = callback ? callback : function(){},
+				dependencies = dependencies ? dependencies : [],
+				reCheckDependency = function(){
+					/**
+					 * recheck dependencies if everything is already loaded
+					 */
+					 if(self.isAllLoaded(dependencies)) {
+					 	callback();
+					 }
+				},
+				loadToDocument = function(scriptName){
+					/**
+			 	 	 * the script doesnt have any dependency
+			 	 	 */
+			 	 	 var docScript = createElement(scriptData.url, scriptName);
+
+			 	 	 /**
+			 	 	  * add onload listener for the script tag
+			 	 	  */
+			 	 	 elementReady(docScript, function(){
+			 	 	 	loaded.push(scriptName);
+			 	 	 	reCheckDependency();
+
+			 	 	 });
+			 	 	 /**
+			 	 	  * and now, add the script in the head section
+			 	 	  */
+			 	 	 document.getElementsByTagName('head')[0].appendChild(docScript);
+				};
 			
+			/**
+			 * transform dependencies datatype into array
+			 */
+			 dependencies = dependencies.constructor == String ? [dependencies] : dependencies;
+			 
+			 /**
+			  * if doesnt have dependencies, then just run the callback immediately
+			  */
+			 if(!dependencies.length) {
+			 	callback();
+			 }
+
+
 			/**
 			 * loop through each dependency script
 			 */
-			 for(var i in dependecies) {
-			 	var scriptName = dependecies[i];
+			 for(var i in dependencies) {
+			 	var scriptName = dependencies[i];
 
 			 	/**
 			 	 * check if the script is already loaded in the html
 			 	 */
 			 	 if(this.isLoaded(scriptName)) {
-			 	 	
-			 	 	_loaded.push(scriptName);
+			 	 	reCheckDependency();
 
 			 	 } else {
 			 	 	/**
 			 	 	 * check if the script name exists in the library listing
 			 	 	 */
-			 	 	var self = this,	
-			 	 		scriptData = libraries[scriptName];
+			 	 	var scriptData = libraries[scriptName];
 
 			 	 	 /**
 			 	 	  * stop and log error if the script doesnt exists in the list
@@ -145,25 +208,15 @@
 			 	 	 */
 			 	 	if(scriptData.dependency) {
 
+			 	 		var dependency = scriptData.dependency;
+			 	 		/**
+			 	 		 * check and transform the datatype of dependency into array
+			 	 		 */
+			 	 		dependency = dependency.constructor == String ? [dependency] :  dependency;
+
+			 	 		self.run(dependency, function(){loadToDocument(scriptName)});
 			 	 	} else {
-				 	 	/**
-				 	 	 * the script doesnt have any dependency
-				 	 	 */
-				 	 	 var docScript = createElement(scriptData.url);
-
-				 	 	 /**
-				 	 	  * add onload listener for the script tag
-				 	 	  */
-				 	 	 elementReady(docScript, function(){
-				 	 	 	_loaded.push(scriptName);
-				 	 	 	loaded.push(scriptName);
-
-
-				 	 	 	if(self.isAllLoaded(dependecies)) {
-
-				 	 	 	}
-
-				 	 	 })
+				 	 	loadToDocument(scriptName);
 			 	 	}
 
 			 	 }
@@ -173,9 +226,36 @@
 
 		/**
 		 * load js scripts 
+		 * @param Array dependencies: name of the libraries
+		 * @param Array|String scripts: url
 		 */
-		loadScripts: function(dependecies, scripts){
+		loadScripts: function(dependecies, urls){
+			/**
+			 * default value of urls is array
+			 */
+			urls = urls ? urls : [];
+
+			/**
+			 * check urls datatype
+			 * and transform it to array 
+			 */
+			 urls = urls.constructor == String ? [urls] : urls;
+
+			 this.run(dependecies, function(){
+			 	for(var i in urls) {
+			 		var docScript = createElement(urls[i]);
+			 		document.getElementsByTagName('head')[0].appendChild(docScript);
+			 	}
+			 });
+
 			return this;
+		},
+
+		/**
+		 * defer css
+		 */
+		loaddCss: function(urls){	
+			self.loadScripts([], urls);
 		}
 	 }
 
