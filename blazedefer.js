@@ -172,55 +172,62 @@
 			 }
 
 
-			/**
-			 * loop through each dependency script
-			 */
-			 for(var i in dependencies) {
-			 	var scriptName = dependencies[i];
+			 /**
+			  * added settimeout for a nonblocking rendering in the html
+			  */
+			 setTimeout(function(){
 
 			 	/**
-			 	 * check if the script is already loaded in the html
-			 	 */
-			 	 if(this.isLoaded(scriptName)) {
-			 	 	reCheckDependency();
+				 * loop through each dependency script
+				 */
+				 for(var i in dependencies) {
+				 	var scriptName = dependencies[i];
 
-			 	 } else {
-			 	 	/**
-			 	 	 * check if the script name exists in the library listing
-			 	 	 */
-			 	 	var scriptData = libraries[scriptName];
+				 	/**
+				 	 * check if the script is already loaded in the html
+				 	 */
+				 	 if(self.isLoaded(scriptName)) {
+				 	 	reCheckDependency();
 
-			 	 	 /**
-			 	 	  * stop and log error if the script doesnt exists in the list
-			 	 	  */
-			 	 	if(!scriptData) {
-			 	 	 	return console.error("Script: "+scriptName+" doesn\'t exists in the library.");
-			 	 	}
+				 	 } else {
+				 	 	/**
+				 	 	 * check if the script name exists in the library listing
+				 	 	 */
+				 	 	var scriptData = libraries[scriptName];
 
-			 	 	 /**
-			 	 	  * check if the data is a string or an object
-			 	 	  * if string, transform it to object for uniform datatype
-			 	 	  */
-			 	 	scriptData = scriptData.constructor == String ? {url: scriptData} : scriptData;
+				 	 	 /**
+				 	 	  * stop and log error if the script doesnt exists in the list
+				 	 	  */
+				 	 	if(!scriptData) {
+				 	 	 	return console.error("Script: "+scriptName+" doesn\'t exists in the library.");
+				 	 	}
 
-			 	 	/**
-			 	 	 * check for the dependency of the script
-			 	 	 */
-			 	 	if(scriptData.dependency) {
+				 	 	 /**
+				 	 	  * check if the data is a string or an object
+				 	 	  * if string, transform it to object for uniform datatype
+				 	 	  */
+				 	 	scriptData = scriptData.constructor == String ? {url: scriptData} : scriptData;
 
-			 	 		var dependency = scriptData.dependency;
-			 	 		/**
-			 	 		 * check and transform the datatype of dependency into array
-			 	 		 */
-			 	 		dependency = dependency.constructor == String ? [dependency] :  dependency;
+				 	 	/**
+				 	 	 * check for the dependency of the script
+				 	 	 */
+				 	 	if(scriptData.dependency) {
 
-			 	 		self.run(dependency, function(){loadToDocument(scriptName)});
-			 	 	} else {
-				 	 	loadToDocument(scriptName);
-			 	 	}
+				 	 		var dependency = scriptData.dependency;
+				 	 		/**
+				 	 		 * check and transform the datatype of dependency into array
+				 	 		 */
+				 	 		dependency = dependency.constructor == String ? [dependency] :  dependency;
 
-			 	 }
-			 }
+				 	 		self.run(dependency, function(){loadToDocument(scriptName)});
+				 	 	} else {
+					 	 	loadToDocument(scriptName);
+				 	 	}
+
+				 	 }
+				 }
+			 });
+			
 			return this;
 		},
 

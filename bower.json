@@ -1,0 +1,21 @@
+{
+  "name": "blazedefer.js",
+  "version": "1.0.0",
+  "license": "MIT",
+  "homepage": "https://github.com/cresjie/blazedeferjs",
+  "description": "Defer your stylesheet and javascript file to increase page speed",
+  "main": "blazedefer.js",
+  "keywords": [
+    "defer script",
+    "defer css stylesheet",
+    "increase pagespeed"
+  ],
+  
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ]
+}
