@@ -1,13 +1,14 @@
 (function(window){
 	
 	var libraries = {},
+		queues = {},
 		loaded = [],
 		blazedefer = function(){return blazedefer;};
 
 	/**
 	 * Add onload listener to an element
 	 */
-	function elementReady(element, callback) {
+	function elementReady(element, callback, param) {
 
 		var fired = false,
 			ready = function() {
@@ -17,7 +18,7 @@
 				 */
 				if(!fired){
 					fired =true;
-					callback();
+					callback.apply(element, param);
 					
 				}
 			},
@@ -48,7 +49,7 @@
 		if( (/.js$/).test(source) ){
 			el = document.createElement('script');
 			el.src = source;	
-			el.setAttribute('async', true);
+			el.async = true;
 		}else{
 			el = document.createElement('link');
 			el.rel = "stylesheet";
@@ -84,6 +85,7 @@
 	 */	
 	var methods = {
 
+		elementReady: elementReady,
 
 	 	/**
 		 * check if the script is already loaded
@@ -123,7 +125,7 @@
 		 * @param array dependencies
 		 * @param function callback
 		 */
-		run: function(dependencies, callback){
+		run: function(dependencies, callback, param){
 
 			/**
 			 * initiate variable functions to be called later
@@ -136,27 +138,57 @@
 					 * recheck dependencies if everything is already loaded
 					 */
 					 if(self.isAllLoaded(dependencies)) {
-					 	callback();
+					 	callback.apply(this, param);
 					 }
 				},
-				loadToDocument = function(scriptName){
-					/**
-			 	 	 * the script doesnt have any dependency
-			 	 	 */
-			 	 	 var docScript = createElement(scriptData.url, scriptName);
+				loadToDocument = function(url, scriptName){
 
+					var firstQueue = false,
+						docScript;
+					/**
+					 * check first if the script is already in queue
+					 */
+					 if(queues[scriptName]) {
+					 	/**
+					 	 * the script is already in the queue listing
+					 	 * then just retreive its script tag instance 
+					 	 * and add "ready" event later
+					 	 */
+						docScript = queues[scriptName];
+					 } else {
+
+					 	docScript = createElement(url, scriptName);
+					 	queues[scriptName] = docScript;
+					 	firstQueue = true;
+					 }
+						
 			 	 	 /**
 			 	 	  * add onload listener for the script tag
 			 	 	  */
 			 	 	 elementReady(docScript, function(){
-			 	 	 	loaded.push(scriptName);
+
+			 	 	 	/**
+			 	 	 	 * if the script is not yet in the list of loaded script
+			 	 	 	 */
+			 	 	 	if(!self.isLoaded(scriptName)) {
+			 	 	 		loaded.push(scriptName);
+			 	 	 	}
+			 	 	 	/**
+			 	 	 	 * remove the script from the queue list
+			 	 	 	 */
+			 	 	 	queues[scriptName] = null;
+			 	 	 	
 			 	 	 	reCheckDependency();
 
 			 	 	 });
+
 			 	 	 /**
 			 	 	  * and now, add the script in the head section
 			 	 	  */
-			 	 	 document.getElementsByTagName('head')[0].appendChild(docScript);
+			 	 	  if(firstQueue) {
+			 	 	  	document.getElementsByTagName('head')[0].appendChild(docScript);
+			 	 	  }
+			 	 	 
 				};
 			
 			/**
@@ -168,14 +200,14 @@
 			  * if doesnt have dependencies, then just run the callback immediately
 			  */
 			 if(!dependencies.length) {
-			 	callback();
+			 	callback.apply(this, param);
 			 }
 
 
 			 /**
 			  * added settimeout for a nonblocking rendering in the html
 			  */
-			 setTimeout(function(){
+			 //setTimeout(function(){
 
 			 	/**
 				 * loop through each dependency script
@@ -218,15 +250,18 @@
 				 	 		 * check and transform the datatype of dependency into array
 				 	 		 */
 				 	 		dependency = dependency.constructor == String ? [dependency] :  dependency;
+				 	 		
+				 	 		self.run(dependency, function(data, name){
+				 	 			loadToDocument(data.url, name);
+				 	 		},[scriptData, scriptName]);
 
-				 	 		self.run(dependency, function(){loadToDocument(scriptName)});
 				 	 	} else {
-					 	 	loadToDocument(scriptName);
+					 	 	loadToDocument(scriptData.url, scriptName);
 				 	 	}
 
 				 	 }
 				 }
-			 });
+			// });
 			
 			return this;
 		},
@@ -236,7 +271,8 @@
 		 * @param Array dependencies: name of the libraries
 		 * @param Array|String scripts: url
 		 */
-		loadScripts: function(dependecies, urls){
+		loadScripts: function(dependecies, urls, callback, params){
+			var _loaded = [];
 			/**
 			 * default value of urls is array
 			 */
@@ -251,6 +287,15 @@
 			 this.run(dependecies, function(){
 			 	for(var i in urls) {
 			 		var docScript = createElement(urls[i]);
+
+			 		elementReady(docScript, function(i){
+			 			_loaded.push(urls[i]);
+
+			 			if(_loaded.length == urls.length) {
+			 				callback.apply(blazedefer, params)
+			 			}
+			 		},[i]);
+
 			 		document.getElementsByTagName('head')[0].appendChild(docScript);
 			 	}
 			 });
