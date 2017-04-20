@@ -87,6 +87,19 @@
 
 		elementReady: elementReady,
 
+		/**
+		 * check url if its the same host with the window url
+		 */
+		isSameHost: function(url) {
+			/**
+			 * a nifty trick to have a complete web url
+			 */
+			 var a = document.createElement('a');
+			 a.href = url;
+
+			 return a.href.indexOf(window.location.host) > -1 ? true : false;
+		},
+
 	 	/**
 		 * check if the script is already loaded
 		 * @param string name
