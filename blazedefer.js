@@ -5,6 +5,34 @@
 		loaded = [],
 		blazedefer = function(){return blazedefer;};
 
+
+	function HTTPRequest() {
+		var xhr = new XMLHttpRequest,
+			callbacks = [],
+			isLoaded = function(){
+				return xhr.readyState === 4 && xhr.status == 200;
+			};
+
+		xhr.onreadystatechange = function(){
+			if(isLoaded()) {
+				for(var i in callbacks) {
+					callbacks[i].apply(this, callbacks[i].params);
+				}
+			}
+		}
+
+		xhr._onload = function(callback, params) {
+			
+			if(isLoaded()) {
+				callback.apply(this, params)
+			} else {
+				callback.params = params
+				callbacks.push(callback);
+			}
+		}
+
+		return xhr;
+	}
 	/**
 	 * Add onload listener to an element
 	 */
@@ -179,6 +207,7 @@
 						/**
 				 	 	  * add onload listener for the script tag
 				 	 	  */
+				 	 	 
 				 	 	 elementReady(docScript, function(){
 
 				 	 	 	/**
@@ -190,7 +219,9 @@
 				 	 	 	/**
 				 	 	 	 * remove the script from the queue list
 				 	 	 	 */
-				 	 	 	queues[scriptName] = null;
+				 	 	 	queues[scriptName] = null; 
+
+
 				 	 	 	
 				 	 	 	reCheckDependency();
 
@@ -269,15 +300,25 @@
 				 	 			};
 				 	 			
 				 	 	 	var executePreloadScript = function(_scriptPreload, _scriptData, name){
+				 	 	 			console.log('try: '+name+' ' + _scriptPreload.requestDone);
 				 	 				if(_scriptPreload.requestDone) {
 				 	 					try {
 				 	 						eval(_scriptPreload.data);
-				 	 						console.log('evaluated');
+
+				 	 						if(!self.isLoaded(scriptName)) {
+								 	 	 		loaded.push(name);
+								 	 	 	}
+								 	 	 	queues[name] = null;
+
+				 	 						console.log('evaluated', name);
+
+				 	 						reCheckDependency();
+
 				 	 					}catch(e) {
 				 	 						console.error('Error: '+ scriptData.url);
 				 	 						console.error(e);
 				 	 					}
-				 	 					queues[name] = null;
+				 	 					
 				 	 				}
 				 	 				
 				 	 				
@@ -294,24 +335,25 @@
 				 	 		 * so that we can above the CORS
 				 	 		 */
 
-				 	 		 if(self.isSameHost(scriptData.url) && queues[scriptName]) {
-
+				 	 		 if(self.isSameHost(scriptData.url) && !queues[scriptName]) {
+				 	 		 	console.log('preload: '+scriptName);
 				 	 		 	scriptPreload.available = true;
 				 	 		 	
 
-				 	 		 	var xhr = new XMLHttpRequest;
+				 	 		 	var xhr = new HTTPRequest;
 				 	 		 	xhr.open('GET', scriptData.url, true);
-				 	 		 	xhr.onreadystatechange = function(e){
-				 	 		 		if(xhr.readyState === 4 && xhr.status == 200) {
-				 	 		 			scriptPreload.data = xhr.responseText;
-				 	 		 			executePreloadScript(scriptPreload, scriptData, scriptName);
-				 	 		 			scriptPreload.requestDone = true;
+
+				 	 		 	xhr._onload( function(_scriptPreload, _xhr, _scriptData, name){
+				 	 		 		
+				 	 		 		if(_xhr.readyState === 4 && _xhr.status == 200) {
+				 	 		 			_scriptPreload.data = _xhr.responseText;
+				 	 		 			executePreloadScript(_scriptPreload, _scriptData, scriptName);
+				 	 		 			_scriptPreload.requestDone = true;
 				 	 		 		}
-				 	 		 	};
+				 	 		 	}, [scriptPreload, xhr, scriptData, scriptName]);
 
+				 	 		 	queues[scriptName] = xhr;
 				 	 		 	xhr.send();
-
-				 	 		 } else {
 
 				 	 		 }
 				 	 		
@@ -320,7 +362,7 @@
 				 	 			 * check if this parent script is requested in the preload
 				 	 			 */
 				 	 			if(_preload.available) {
-
+				 	 				console.log('available: '+name)
 				 	 				executePreloadScript(_preload, data, name);
 				 	 				_preload.requestDone = true;
 				 	 			
