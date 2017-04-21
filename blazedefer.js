@@ -174,26 +174,29 @@
 					 	queues[scriptName] = docScript;
 					 	firstQueue = true;
 					 }
-						
-			 	 	 /**
-			 	 	  * add onload listener for the script tag
-			 	 	  */
-			 	 	 elementReady(docScript, function(){
+					
+					
+						/**
+				 	 	  * add onload listener for the script tag
+				 	 	  */
+				 	 	 elementReady(docScript, function(){
 
-			 	 	 	/**
-			 	 	 	 * if the script is not yet in the list of loaded script
-			 	 	 	 */
-			 	 	 	if(!self.isLoaded(scriptName)) {
-			 	 	 		loaded.push(scriptName);
-			 	 	 	}
-			 	 	 	/**
-			 	 	 	 * remove the script from the queue list
-			 	 	 	 */
-			 	 	 	queues[scriptName] = null;
-			 	 	 	
-			 	 	 	reCheckDependency();
+				 	 	 	/**
+				 	 	 	 * if the script is not yet in the list of loaded script
+				 	 	 	 */
+				 	 	 	if(!self.isLoaded(scriptName)) {
+				 	 	 		loaded.push(scriptName);
+				 	 	 	}
+				 	 	 	/**
+				 	 	 	 * remove the script from the queue list
+				 	 	 	 */
+				 	 	 	queues[scriptName] = null;
+				 	 	 	
+				 	 	 	reCheckDependency();
 
-			 	 	 });
+				 	 	 });
+
+				 	 	 
 
 			 	 	 /**
 			 	 	  * and now, add the script in the head section
@@ -258,15 +261,74 @@
 				 	 	 */
 				 	 	if(scriptData.dependency) {
 
-				 	 		var dependency = scriptData.dependency;
+				 	 		var dependency = scriptData.dependency,
+				 	 			scriptPreload = {
+				 	 				available: false,
+				 	 				requestDone: false,
+				 	 				data: null
+				 	 			};
+				 	 			
+				 	 	 	var executePreloadScript = function(_scriptPreload, _scriptData, name){
+				 	 				if(_scriptPreload.requestDone) {
+				 	 					try {
+				 	 						eval(_scriptPreload.data);
+				 	 						console.log('evaluated');
+				 	 					}catch(e) {
+				 	 						console.error('Error: '+ scriptData.url);
+				 	 						console.error(e);
+				 	 					}
+				 	 					queues[name] = null;
+				 	 				}
+				 	 				
+				 	 				
+				 	 			};
 				 	 		/**
 				 	 		 * check and transform the datatype of dependency into array
 				 	 		 */
 				 	 		dependency = dependency.constructor == String ? [dependency] :  dependency;
+
+
+				 	 		/**
+				 	 		 * try to preload this current script
+				 	 		 * check first if the script url is the same host as the window host
+				 	 		 * so that we can above the CORS
+				 	 		 */
+
+				 	 		 if(self.isSameHost(scriptData.url) && queues[scriptName]) {
+
+				 	 		 	scriptPreload.available = true;
+				 	 		 	
+
+				 	 		 	var xhr = new XMLHttpRequest;
+				 	 		 	xhr.open('GET', scriptData.url, true);
+				 	 		 	xhr.onreadystatechange = function(e){
+				 	 		 		if(xhr.readyState === 4 && xhr.status == 200) {
+				 	 		 			scriptPreload.data = xhr.responseText;
+				 	 		 			executePreloadScript(scriptPreload, scriptData, scriptName);
+				 	 		 			scriptPreload.requestDone = true;
+				 	 		 		}
+				 	 		 	};
+
+				 	 		 	xhr.send();
+
+				 	 		 } else {
+
+				 	 		 }
 				 	 		
-				 	 		self.run(dependency, function(data, name){
-				 	 			loadToDocument(data.url, name);
-				 	 		},[scriptData, scriptName]);
+				 	 		self.run(dependency, function(data, name, _preload){
+				 	 			/**
+				 	 			 * check if this parent script is requested in the preload
+				 	 			 */
+				 	 			if(_preload.available) {
+
+				 	 				executePreloadScript(_preload, data, name);
+				 	 				_preload.requestDone = true;
+				 	 			
+				 	 			} else {
+				 	 				loadToDocument(data.url, name);
+				 	 			}
+				 	 				
+				 	 		},[scriptData, scriptName, scriptPreload]);
 
 				 	 	} else {
 					 	 	loadToDocument(scriptData.url, scriptName);
