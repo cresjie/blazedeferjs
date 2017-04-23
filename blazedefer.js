@@ -305,7 +305,7 @@
 				 	 					try {
 				 	 						eval(_scriptPreload.data);
 
-				 	 						if(!self.isLoaded(scriptName)) {
+				 	 						if(!self.isLoaded(name)) {
 								 	 	 		loaded.push(name);
 								 	 	 	}
 								 	 	 	queues[name] = null;
@@ -315,7 +315,7 @@
 				 	 						reCheckDependency();
 
 				 	 					}catch(e) {
-				 	 						console.error('Error: '+ scriptData.url);
+				 	 						console.error('Error: '+ _scriptData.url);
 				 	 						console.error(e);
 				 	 					}
 				 	 					
@@ -335,25 +335,31 @@
 				 	 		 * so that we can above the CORS
 				 	 		 */
 
-				 	 		 if(self.isSameHost(scriptData.url) && !queues[scriptName]) {
-				 	 		 	console.log('preload: '+scriptName);
+				 	 		 if(self.isSameHost(scriptData.url) ) {
+
 				 	 		 	scriptPreload.available = true;
-				 	 		 	
 
-				 	 		 	var xhr = new HTTPRequest;
-				 	 		 	xhr.open('GET', scriptData.url, true);
+				 	 		 	if(!queues[scriptName]) {
+									console.log('preload: '+scriptName);
+					 	 		 	
+					 	 		 	
 
-				 	 		 	xhr._onload( function(_scriptPreload, _xhr, _scriptData, name){
-				 	 		 		
-				 	 		 		if(_xhr.readyState === 4 && _xhr.status == 200) {
-				 	 		 			_scriptPreload.data = _xhr.responseText;
-				 	 		 			executePreloadScript(_scriptPreload, _scriptData, scriptName);
-				 	 		 			_scriptPreload.requestDone = true;
-				 	 		 		}
-				 	 		 	}, [scriptPreload, xhr, scriptData, scriptName]);
+					 	 		 	var xhr = new HTTPRequest;
+					 	 		 	xhr.open('GET', scriptData.url, true);
 
-				 	 		 	queues[scriptName] = xhr;
-				 	 		 	xhr.send();
+					 	 		 	xhr._onload( function(_scriptPreload, _xhr, _scriptData, name){
+					 	 		 		
+					 	 		 		if(_xhr.readyState === 4 && _xhr.status == 200) {
+					 	 		 			_scriptPreload.data = _xhr.responseText;
+					 	 		 			executePreloadScript(_scriptPreload, _scriptData, name); 
+					 	 		 			_scriptPreload.requestDone = true;
+					 	 		 		}
+					 	 		 	}, [scriptPreload, xhr, scriptData, scriptName]);
+
+					 	 		 	queues[scriptName] = xhr;
+					 	 		 	xhr.send();
+				 	 		 	}
+					 	 		 	
 
 				 	 		 }
 				 	 		
