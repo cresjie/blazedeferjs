@@ -303,12 +303,22 @@
 				 	 	 			console.log('try: '+name+' ' + _scriptPreload.requestDone);
 				 	 				if(_scriptPreload.requestDone) {
 				 	 					try {
-				 	 						eval(_scriptPreload.data);
+				 	 						window.eval(_scriptPreload.data);
 
 				 	 						if(!self.isLoaded(name)) {
 								 	 	 		loaded.push(name);
 								 	 	 	}
 								 	 	 	queues[name] = null;
+
+								 	 	 	var docScript = document.createElement('script');
+								 	 	 	docScript.setAttribute('data-src', _scriptData.url);
+
+								 	 	 	if(name) {
+								 	 	 		docScript.setAttribute('blazedefer-library', name);
+								 	 	 	}
+								 	 	 	document.getElementsByTagName('head')[0].appendChild(docScript);
+
+								 	 	 	
 
 				 	 						console.log('evaluated', name);
 
